@@ -39,7 +39,7 @@ class ip_net():
             elif ip6_address.find('::') == len(ip6_address) - 2:
                 # x::
                 zero_count = 8 - len(ip6_address.split('::')[0].split(':'))
-                ip6_address = ip6_address.split('::')[0] + ':0' * 5
+                ip6_address = ip6_address.split('::')[0] + ':0' * zero_count
             else:
                 # x::x
                 zero_count = 9 - len(ip6_address.split(':'))
