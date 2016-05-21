@@ -6,6 +6,7 @@ from argparse import RawTextHelpFormatter
 from IpNet import ip_net as ip_net
 import re
 import time
+import IpLibHandler
 
 class argument():
     '''Handle arguments'''
@@ -47,6 +48,12 @@ Notes:
                             help='Show full response info once it is taken.')
         self.parser.add_argument('-w', '--watch-statistics', dest='show_statistics', action='store_true',
                             help='Show statistics info only once it is taken.')
+        self.parser.add_argument('--isp-address', dest='isp_address', default=None,
+                                 help='''Specify the source addresses from ISP predefined base. Format: \n--isp-address "china-telecom Anhui" \n--isp-address "any Henan"''')
+        self.parser.add_argument('--geo-address', dest='geo_address', default=None,
+                                 help='Specify the source addresses from GEO IP library. Format: --geo-address "Andorra".')
+        self.parser.add_argument('--total-address', dest='total_address', default=1, type=int,
+                                 help='Specify total isp address or total geo address, default is 1.')
         self.parser.add_argument('--same-id', dest='same_id', action='store_true',
                             help='Use same message ID for every thread once it is taken.')
         self.parser.add_argument('--no-recurse', dest='recurse', action='store_false',
@@ -94,6 +101,30 @@ Notes:
             self.source_port = None
         else:
             self.source_port = self.handle_src_port()
+
+
+        if self.args.isp_address != None:
+
+            isp_addr_list = IpLibHandler.get_ip_list('ISP', self.args.isp_address, self.args.total_address)
+            if isp_addr_list != False:
+                if self.source_address == None:
+                    self.source_address = isp_addr_list
+                else:
+                    self.source_address = self.source_address+isp_addr_list
+        if self.args.geo_address != None:
+            if self.dns_server.find(':') == -1:
+                #ipv4
+                geo_addr_list = IpLibHandler.get_ip_list('Country', self.args.geo_address, self.args.total_address, ipv6=False)
+            else:
+                #ipv6
+                geo_addr_list = IpLibHandler.get_ip_list('Country', self.args.geo_address, self.args.total_address,
+                                                         ipv6=True)
+            if geo_addr_list != False:
+                if self.source_address == None:
+                    self.source_address = geo_addr_list
+                else:
+                    self.source_address = self.source_address+geo_addr_list
+
 
 
     def print_help(self):

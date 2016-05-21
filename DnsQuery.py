@@ -288,6 +288,12 @@ class DnsQuery():
         self.show_full = show_full
         self.show_statistics = show_statistics
 
+        if src_ip_list == []:
+            src_ip_list = None
+        if src_port_list == []:
+            src_port_list = None
+
+
         if src_ip_list != None:
             self._assign_ip(src_ip_list)
 

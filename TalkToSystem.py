@@ -9,6 +9,7 @@ def run_shell_cmd(command, ok_msg=None, error_msg=None, doRaise=True, debug_info
     '''Return the status code'''
     if debug_info == True:
         print '[Run: ' + command + ']'
+
     shell_run = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     return_string = ''
@@ -59,11 +60,11 @@ class IpAddr():
         '''Figure out the out interface and assign IP address to it.'''
         if ip_address.find(':') == -1:
             # IPv4 address
-            ip_add_add_result = run_shell_cmd('ip add add ' + ip_address + '/32 dev ' +out_interface)
+            ip_add_add_result = run_shell_cmd('ip add add ' + ip_address + '/32 dev ' +out_interface, doRaise=False)
             self.ip_cmd_to_clear.append('ip add del '+ip_address+'/32 dev '+out_interface)
         else:
             # IPv6 address
-            ip_add_add_result = run_shell_cmd('ip add add ' + ip_address + '/128 dev ' + out_interface)
+            ip_add_add_result = run_shell_cmd('ip add add ' + ip_address + '/128 dev ' + out_interface, doRaise=False)
             self.ip_cmd_to_clear.append('ip add del ' + ip_address + '/128 dev ' + out_interface)
         #return out_interface
 
