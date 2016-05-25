@@ -195,7 +195,8 @@ class ThreadingDnsQuery(threading.Thread):
                         self.lock.release()
             if self.same_id == False:
                 self.request.id = dns.entropy.random_16()
-            time.sleep(self.interval)
+            if i != self.requests_per_thread-1:
+                time.sleep(self.interval)
 
     def _query_reuse(self, statistics):
         pass
