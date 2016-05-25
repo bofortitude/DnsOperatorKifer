@@ -28,7 +28,7 @@ Notes:
                             help="Specify the concurrent threads number.")
         self.parser.add_argument('-r', '--requests', dest='requests', default=1, type=int,
                             help="Specify the requests number per thread.")
-        self.parser.add_argument('-i', '--interval', dest='interval', default=0, type=float,
+        self.parser.add_argument('-i', '--interval', dest='interval', default=1.0, type=float,
                             help='Interval between requests, default is 0.')
         self.parser.add_argument('-s', '--source-address', dest='source_address',
                             help="Kinds of format are supported:\n1) -s '10.76.1.1,10.77.2.1,10.88.1.1-10.88.2.10,10.100.1.3'\n2) -s '[10.76.1.0/24](10) [10.76.123.0/24](5)'")

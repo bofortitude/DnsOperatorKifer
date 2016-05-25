@@ -24,12 +24,40 @@ def dump_info(msg, raw=False):
         print '['+time.ctime()+'] '+msg
 
 
+class answer_stat(threading.Thread):
+    def __init__(self, thread_list, public_stat_dict, thread_lock, interval=1.0):
+        super(answer_stat, self).__init__(name='Thread_monitor')
+        self.thread_list = thread_list
+        self.public_stat_dict = public_stat_dict
+        self.thread_lock = thread_lock
+        self.interval = interval
+
+
+    def run(self):
+        while True:
+            all_threads_dead = True
+            for i in self.thread_list:
+                if i.isAlive() == True:
+                    all_threads_dead = False
+                    break
+            if all_threads_dead == True:
+                self.thread_lock.acquire()
+                dump_info(str(self.public_stat_dict))
+                self.public_stat_dict.clear()
+                self.thread_lock.release()
+                break
+            self.thread_lock.acquire()
+            dump_info(str(self.public_stat_dict))
+            self.public_stat_dict.clear()
+            self.thread_lock.release()
+
+            time.sleep(self.interval)
 
 
 class ThreadingDnsQuery(threading.Thread):
-    def __init__(self, thread_name, lock, request, dns_server, dns_server_port, requests_per_thread=1, interval=0, reuse_session=False, same_id=True,
+    def __init__(self, thread_name, lock, request, dns_server, dns_server_port, requests_per_thread=1, interval=1.0, reuse_session=False, same_id=True,
                  src_ip=None, src_port=0, tcp=False, timeout=5.0,
-                 record_type='A', show_statistics=False, show_full=False):
+                 record_type='A', show_statistics=False, show_full=False, public_stat_dict={}):
         super(ThreadingDnsQuery, self).__init__(name=thread_name)
 
         self.lock = lock
@@ -47,6 +75,7 @@ class ThreadingDnsQuery(threading.Thread):
         self.show_full = show_full
         self.request = request
         self.same_id = same_id
+        self.public_stat_dict = public_stat_dict
 
         self.rcode_reason_dict = dns.rcode._by_value
 
@@ -93,7 +122,25 @@ class ThreadingDnsQuery(threading.Thread):
         return result_dict
 
     def _statistics_mode(self, response, results):
-        pass
+        if results['status_code'] != 0:
+            self.lock.acquire()
+            if results['status_reason'] in self.public_stat_dict:
+                self.public_stat_dict[results['status_reason']] = self.public_stat_dict[results['status_reason']] + 1
+            else:
+                self.public_stat_dict[results['status_reason']] = 1
+            self.lock.release()
+            return False
+        else:
+            my_answers = results['answers']
+            p_ansr = my_answers[0].split()
+            primary_answer = p_ansr[len(p_ansr) - 1]
+            self.lock.acquire()
+            if primary_answer in self.public_stat_dict:
+                self.public_stat_dict[primary_answer] = self.public_stat_dict[primary_answer] + 1
+            else:
+                self.public_stat_dict[primary_answer] = 1
+
+            self.lock.release()
 
 
     def _query_standard(self):
@@ -109,7 +156,10 @@ class ThreadingDnsQuery(threading.Thread):
                 self.lock.release()
             else:
                 if self.show_statistics == True:
-                    self._statistics_mode(response, results)
+                    mode_return = self._statistics_mode(response, results)
+
+
+
                 else:
 
                     if self.record_type == 'A' or self.record_type == 'AAAA':
@@ -132,7 +182,7 @@ class ThreadingDnsQuery(threading.Thread):
                             remain_answers = remain_answers+c_ansr[len(c_ansr)-1]+' '
                         remain_answers = remain_answers.rstrip()+')'
 
-                        shown_result = 'id='+str(self.request.id)+' src='+str(self.src_ip)+' status='+results['status_reason']+' primary='+primary_answer+' remain='+remain_answers
+                        shown_result = 'id='+str(self.request.id)+' src='+str(self.src_ip)+' primary='+primary_answer+' remain='+remain_answers
                         self.lock.acquire()
                         dump_info(shown_result, raw=True)
                         dump_info('', raw=True)
@@ -227,11 +277,12 @@ class DnsQuery():
         record_type = self.thopt_record_type
         show_statistics = self.thopt_show_statistics
         show_full = self.thopt_show_full
+        public_stat_dict = self.public_stat_dict
 
         threading_dns_query_thread = ThreadingDnsQuery(thread_name, self.threading_lock, request, self.dns_server, self.dns_server_port,
                                                        requests_per_thread=requests_per_thread, interval=interval, same_id=same_id,
                                                        reuse_session=reuse_session, tcp=tcp, timeout=timeout, src_ip=src_ip, src_port=src_port,
-                                                       record_type=record_type, show_statistics=show_statistics, show_full=show_full)
+                                                       record_type=record_type, show_statistics=show_statistics, show_full=show_full, public_stat_dict=public_stat_dict)
         threading_dns_query_thread.setDaemon(True)
         self.threads_list.append(threading_dns_query_thread)
 
@@ -244,15 +295,17 @@ class DnsQuery():
     def _start_thread(self):
         for i in self.threads_list:
             i.start()
+        if self.monitor != None:
+            self.monitor.start()
 
     def _wait_for_thread(self):
-        if self.show_statistics == True and self.show_full == False:
-            dump_info('Monitor mode:')
-            exit()
 
-        else:
-            for i in self.threads_list:
-                i.join(timeout=31536000)
+        for i in self.threads_list:
+            i.join(timeout=31536000)
+
+        if self.monitor != None:
+            self.monitor.join(timeout=31536000)
+
 
     def _generate_request(self, record_type, rdclass, domain_name, recurse):
         ADDITIONAL_RDCLASS = 4096
@@ -272,7 +325,7 @@ class DnsQuery():
 
 
     def start(self, domain_name,
-              concurrent_threads=1, requests_per_thread=1, interval=0, reuse_session=False,
+              concurrent_threads=1, requests_per_thread=1, interval=1.0, reuse_session=False,
               src_ip_list=None, src_port_list=None, tcp=False, timeout=5.0,
               record_type='A', recurse=None, rdclass='IN', show_statistics=False, show_full=False, same_id=False):
 
@@ -287,6 +340,7 @@ class DnsQuery():
         self.thopt_show_full = show_full
         self.show_full = show_full
         self.show_statistics = show_statistics
+        self.public_stat_dict = {}
 
         if src_ip_list == []:
             src_ip_list = None
@@ -328,6 +382,11 @@ class DnsQuery():
                         for l in xrange(concurrent_threads):
                             self._new_thread('Thread-' + str(thread_num), self._generate_request(record_type, rdclass, domain_name, recurse), src_ip=j)
                             thread_num += 1
+        self.monitor = None
+        if self.show_statistics == True:
+            self.monitor = answer_stat(self.threads_list, self.public_stat_dict, self.threading_lock)
+            self.monitor.setDaemon(True)
+
 
 
 
