@@ -139,7 +139,6 @@ class ThreadingDnsQuery(threading.Thread):
                 self.public_stat_dict[primary_answer] = self.public_stat_dict[primary_answer] + 1
             else:
                 self.public_stat_dict[primary_answer] = 1
-
             self.lock.release()
 
 
@@ -147,6 +146,13 @@ class ThreadingDnsQuery(threading.Thread):
         for i in xrange(self.requests_per_thread):
             response = self._send_request_standard(self.request)
             if response == False:
+                if self.show_statistics == True:
+                    self.lock.acquire()
+                    if 'Error' in self.public_stat_dict:
+                        self.public_stat_dict['Error'] = self.public_stat_dict['Error'] + 1
+                    else:
+                        self.public_stat_dict['Error'] = 1
+                    self.lock.release()
                 continue
             results = self._response_handle(response)
             if self.show_full == True:
