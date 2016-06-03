@@ -20,9 +20,9 @@ import time
 
 def dump_info(msg, raw=False):
     if raw == True:
-        print msg
+        print str(msg)
     else:
-        print '['+time.ctime()+'] '+msg
+        print '['+time.ctime()+'] '+str(msg)
 
 
 class answer_stat(threading.Thread):
@@ -133,6 +133,8 @@ class ThreadingDnsQuery(threading.Thread):
             return False
         else:
             my_answers = results['answers']
+            if len(my_answers) < 1:
+                return
             p_ansr = my_answers[0].split()
             primary_answer = p_ansr[len(p_ansr) - 1]
             self.lock.acquire()
@@ -154,6 +156,7 @@ class ThreadingDnsQuery(threading.Thread):
                     else:
                         self.public_stat_dict['Error'] = 1
                     self.lock.release()
+                time.sleep(self.interval)
                 continue
             results = self._response_handle(response)
             if self.show_full == True:
@@ -164,8 +167,6 @@ class ThreadingDnsQuery(threading.Thread):
             else:
                 if self.show_statistics == True:
                     mode_return = self._statistics_mode(response, results)
-
-
 
                 else:
 
@@ -181,15 +182,19 @@ class ThreadingDnsQuery(threading.Thread):
                             time.sleep(self.interval)
                             continue
                         my_answers = results['answers']
-                        p_ansr = my_answers[0].split()
-                        primary_answer = p_ansr[len(p_ansr)-1]
-                        remain_answers = '('
-                        for j in xrange(1, len(my_answers)):
-                            c_ansr = my_answers[j].split()
-                            remain_answers = remain_answers+c_ansr[len(c_ansr)-1]+' '
-                        remain_answers = remain_answers.rstrip()+')'
+                        if len(my_answers) < 1:
+                            primary_answer = None
+                            remain_answers = None
+                        else:
+                            p_ansr = my_answers[0].split()
+                            primary_answer = p_ansr[len(p_ansr)-1]
+                            remain_answers = '('
+                            for j in xrange(1, len(my_answers)):
+                                c_ansr = my_answers[j].split()
+                                remain_answers = remain_answers+c_ansr[len(c_ansr)-1]+' '
+                            remain_answers = remain_answers.rstrip()+')'
 
-                        shown_result = 'id='+str(self.request.id)+' src='+str(self.src_ip)+' primary='+primary_answer+' remain='+remain_answers
+                        shown_result = 'id='+str(self.request.id)+' src='+str(self.src_ip)+' primary='+str(primary_answer)+' remain='+str(remain_answers)
                         self.lock.acquire()
                         dump_info(shown_result, raw=True)
                         dump_info('', raw=True)
