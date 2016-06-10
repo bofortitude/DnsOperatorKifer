@@ -362,6 +362,11 @@ class DnsQuery():
 
 
         if src_ip_list != None:
+            dump_info('Here you can run the look up command from GLB:')
+            dump_info('', raw=True)
+            for ip_addr in src_ip_list:
+                dump_info('execute glb-dprox-lookup '+ip_addr, raw=True)
+            dump_info('', raw=True)
             self._assign_ip(src_ip_list)
 
         if src_ip_list == None:
@@ -392,9 +397,8 @@ class DnsQuery():
                 dump_info('Generating threads...')
                 for j in src_ip_list:
                     for k in xrange(concurrent_threads):
-                        for l in xrange(concurrent_threads):
-                            self._new_thread('Thread-' + str(thread_num), self._generate_request(record_type, rdclass, domain_name, recurse), src_ip=j)
-                            thread_num += 1
+                        self._new_thread('Thread-' + str(thread_num), self._generate_request(record_type, rdclass, domain_name, recurse), src_ip=j)
+                        thread_num += 1
         self.monitor = None
         if self.show_statistics == True:
             self.monitor = answer_stat(self.threads_list, self.public_stat_dict, self.threading_lock)
