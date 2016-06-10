@@ -90,7 +90,7 @@ class ThreadingDnsQuery(threading.Thread):
                 return False
         else:
             try:
-                print request
+
                 response = dns.query.tcp(request, self.dns_server, timeout=self.timeout, port=self.dns_server_port, source=self.src_ip, source_port=self.src_port)
                 return response
             except:
